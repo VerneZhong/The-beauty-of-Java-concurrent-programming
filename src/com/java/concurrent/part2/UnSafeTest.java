@@ -3,6 +3,7 @@ package com.java.concurrent.part2;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
+import java.util.concurrent.atomic.AtomicStampedReference;
 
 /**
  * JDK的rt.jar包中提供了硬件级别的原子性操作，Unsafe类中的方法都是native方法，它们使用JNI的方式访问本地C++实现库
@@ -76,8 +77,21 @@ public class UnSafeTest {
 
         final UnSafeTest unSafeTest = new UnSafeTest();
 
+        // aba问题
+
+        unSafeTest.state = 1;
+
+        unSafeTest.state = 0;
+
+        final AtomicStampedReference atomicStampedReference = new AtomicStampedReference(unSafeTest, 0);
+
+
+        final int stamp = atomicStampedReference.getStamp();
+
+        atomicStampedReference.compareAndSet(unSafeTest, atomicStampedReference, stamp, stamp + 1);
+
         // 如果stateOffset为expect就更新成1
-        final boolean b = unsafe.compareAndSwapInt(unSafeTest, stateOffset, 0, 1);
+        boolean b = unsafe.compareAndSwapInt(unSafeTest, stateOffset, 0, 1);
 
         System.out.println(b);
 
