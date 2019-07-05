@@ -48,6 +48,7 @@ public class Point {
 
     /**
      * 独占锁-写锁
+     * 以原子性的更新坐标值，保证了数据一致性
      * @param deltaX
      * @param deltaY
      */
@@ -93,15 +94,15 @@ public class Point {
      * @param newY
      */
     void moveIfAtOrigin(double newX, double newY) {
-        // 这里可以使用乐观读锁替换
+        // 这里使用悲观读锁，也可以使用乐观读锁替换，保证其他线程不能获取写锁来修改x，y
         long stamp = stampedLock.readLock();
         try {
             // 如果当前点在原点则移动
             while (x == 0.0 && y == 0.0) {
                 // 尝试将获取的读锁升级为写锁
                 final long writeStamp = stampedLock.tryConvertToWriteLock(stamp);
-                // 升级成功，则更新新戳记，并设置坐标值，然后退出循环
-                if (writeStamp == 0) {
+                // 升级成功返回非0的stamp，则更新新戳记，并设置坐标值，然后退出循环
+                if (writeStamp != 0L) {
                     stamp = writeStamp;
                     x = newX;
                     y = newY;
@@ -116,6 +117,25 @@ public class Point {
             // 释放锁
             stampedLock.unlock(stamp);
         }
+    }
+
+    public double getX() {
+        return x;
+    }
+
+    public double getY() {
+        return y;
+    }
+
+    public static void main(String[] args) {
+
+        Point point = new Point();
+        point.move(1, 2);
+        System.out.println(point.distanceFromOrigin());
+        System.out.println(point.getX() + ":" + point.getY());
+        point.move(0, 0);
+        point.moveIfAtOrigin(2, 2);
+        System.out.println(point.getX() + ":" + point.getY());
     }
 
 }
